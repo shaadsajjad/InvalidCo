@@ -45,93 +45,121 @@ class _SampleState extends State<Sample> {
       body: images.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : Stack(
-        children: [
-          // Grid of images
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 11),
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      selectedImages[index] = !selectedImages[index];
-                    });
-                  },
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          File(images[index]),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image),
+              children: [
+                // Grid of images
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
+                    ),
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            selectedImages[index] = !selectedImages[index];
+                          });
+                        },
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.file(
+                                File(images[index]),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.broken_image),
+                              ),
+                            ),
+                            if (selectedImages[index])
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: BackdropFilter(
+                                  filter:
+                                      ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.2),
+                                  ),
+                                ),
+                              ),
+                            if (selectedImages[index])
+                              const Center(
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: Colors.greenAccent,
+                                  size: 40,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Floating download button
+                if (anySelected)
+                  Positioned(
+                    bottom: 20, // adjust vertical position
+                    left:
+                        (MediaQuery.of(context).size.width - 310) / 2, // center
+                    child: Material(
+                      elevation: 8, // gives 3D shadow
+                      borderRadius: BorderRadius.circular(44),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF66FFB6),
+                          minimumSize: Size(310, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                        onPressed: () async {
+                          const channel = MethodChannel('flutter_channel');
+                          List<String> selectedPaths = [];
+
+                          for (int i = 0; i < images.length; i++) {
+                            if (selectedImages[i]) {
+                              selectedPaths.add(images[i]);
+                            }
+                          }
+
+                          try {
+                            for (String path in selectedPaths) {
+                              await channel
+                                  .invokeMethod('saveImage', {"path": path});
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text("Images downloaded successfully!")),
+
+                            );
+                            _getImages();
+                          } on PlatformException catch (e) {
+                            debugPrint("Failed to download: ${e.message}");
+                          }
+                        },
+                        child: Text(
+                          "Download",
+                          style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black),
                         ),
                       ),
-                      if (selectedImages[index])
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                            child: Container(
-                              color: Colors.black.withOpacity(0.2),
-                            ),
-                          ),
-                        ),
-                      if (selectedImages[index])
-                        const Center(
-                          child: Icon(
-                            Icons.check_circle,
-                            color: Colors.greenAccent,
-                            size: 40,
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Floating download button
-          if (anySelected)
-            Positioned(
-              bottom: 20, // adjust vertical position
-              left: (MediaQuery.of(context).size.width -310) /2,// center
-              child: Material(
-                elevation: 8, // gives 3D shadow
-                borderRadius: BorderRadius.circular(44),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF66FFB6),
-                    minimumSize: Size(310, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
                   ),
-                  onPressed: () {},
-                  child:  Text("Download",style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black
-                    
-                  ),),
-                  
-                ),
-              ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

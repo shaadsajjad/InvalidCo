@@ -2,23 +2,49 @@ package com.example.invalidco
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
-class MainActivity : FlutterActivity() {
+class MainActivity: FlutterActivity() {
+    private val CHANNEL = "flutter_channel"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        val channel = "flutter_channel"
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channel)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getImages" -> {
                         val images = getAllImages(this)
                         result.success(images)
+                    }
+                    "saveImage" -> {
+                        val path = call.argument<String>("path")
+                        if (path != null) {
+                            try {
+                                val srcFile = File(path)
+                                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                                val destFile = File(downloads, srcFile.name)
+
+                                FileInputStream(srcFile).use { input ->
+                                    FileOutputStream(destFile).use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+
+                                result.success("Saved: ${destFile.absolutePath}")
+                            } catch (e: Exception) {
+                                result.error("SAVE_FAILED", e.message, null)
+                            }
+                        } else {
+                            result.error("INVALID_PATH", "Path is null", null)
+                        }
                     }
                     else -> result.notImplemented()
                 }
@@ -47,5 +73,4 @@ class MainActivity : FlutterActivity() {
 
         return list
     }
-
 }
