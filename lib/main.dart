@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:invalidco/sample.dart';
 import 'package:invalidco/screenSplash.dart';
 
 void main() {
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
       ),
 
 
-      home: Screensplash(),
+      home: Sample(),
     );
   }
 }
