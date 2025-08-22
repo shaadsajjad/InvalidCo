@@ -1,17 +1,20 @@
 package com.example.invalidco
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.io.OutputStream
 
-class MainActivity: FlutterActivity() {
+class MainActivity : FlutterActivity() {
     private val CHANNEL = "flutter_channel"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -22,23 +25,15 @@ class MainActivity: FlutterActivity() {
                 when (call.method) {
                     "getImages" -> {
                         val images = getAllImages(this)
+                        Log.d("MainActivity", "Found ${images.size} images")
                         result.success(images)
                     }
                     "saveImage" -> {
                         val path = call.argument<String>("path")
                         if (path != null) {
                             try {
-                                val srcFile = File(path)
-                                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                                val destFile = File(downloads, srcFile.name)
-
-                                FileInputStream(srcFile).use { input ->
-                                    FileOutputStream(destFile).use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
-
-                                result.success("Saved: ${destFile.absolutePath}")
+                                saveToDownloads(this, path)
+                                result.success("Saved successfully")
                             } catch (e: Exception) {
                                 result.error("SAVE_FAILED", e.message, null)
                             }
@@ -54,7 +49,7 @@ class MainActivity: FlutterActivity() {
     private fun getAllImages(context: Context): List<String> {
         val list: MutableList<String> = mutableListOf()
 
-        val projection = arrayOf(MediaStore.Images.Media.DATA) // file path
+        val projection = arrayOf(MediaStore.Images.Media.DATA) // absolute file path
         val cursor = context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection,
@@ -67,10 +62,35 @@ class MainActivity: FlutterActivity() {
             val columnIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
             while (it.moveToNext()) {
                 val path = it.getString(columnIndex)
-                list.add(path)
+                if (path != null) {
+                    list.add(path) // <-- this will be like /storage/emulated/0/DCIM/...
+                }
             }
         }
 
         return list
+    }
+
+
+    private fun saveToDownloads(context: Context, imagePath: String) {
+        val srcFile = File(Uri.parse(imagePath).path ?: throw Exception("Invalid URI"))
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, srcFile.name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri: Uri? =
+            resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+
+        uri?.let {
+            resolver.openOutputStream(it).use { outputStream ->
+                FileInputStream(srcFile).use { inputStream ->
+                    inputStream.copyTo(outputStream as OutputStream)
+                }
+            }
+        } ?: throw Exception("Failed to create file in Downloads")
     }
 }

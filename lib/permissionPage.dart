@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:invalidco/sample.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Permissionpage extends StatefulWidget {
   const Permissionpage({super.key});
@@ -26,7 +28,14 @@ class _PermissionpageState extends State<Permissionpage> {
             Text(" we just need your folder permission."),
             Text("We promise, we don’t take your photos."),
             SizedBox(height: 42,),
-            ElevatedButton(onPressed: (){}, child: Text("Grant Access",
+            ElevatedButton(onPressed: () async{
+              final SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('permitted', true);
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => Sample())
+              );
+            }, child: Text("Grant Access",
             style: TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 16,
